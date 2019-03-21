@@ -18,48 +18,49 @@ ten = create_grid(10)
 #ax1 = plt.imshow(five)
 #plt.ylim(-0.5,29.5)
 #plt.savefig('five.png')
-
 #Define a function to calculate the Delta E of a spin given the grid and its location
 #Matriculate this
 
 def calculate_delta_energy(grid, exchange_energy, magnetic_moment, field):
+    #Number of rows
 	n = len(grid)
+    #Current energy grid same size as spins
 	current_energy = np.empty_like(grid)
+    #Delta energy grid same size as spins
 	delta_energy = np.empty_like(grid)
 	for i in range(0,n):
 		for j in range(0,n):
+            #Factor of 1/2 to avoid overcounting
 			current_energy[i,j] = -magnetic_moment*field*grid[i,j] -(1/2)*exchange_energy*(grid[i,j]*grid[i,(j-1)%n] + grid[i,j]*grid[i,(j+1)%n] + grid[i,j]*grid[(i-1)%n,j] + grid[i,j]*grid[(i+1)%n,j])
 	delta_energy = - 2*current_energy
 	return delta_energy, current_energy
-	
-#delta, bigE = calculate_delta_energy(nine, 1, 1, 0)
-#print(delta)
-#print(bigE)
 
-#Define a function to ask if the energy change at a given position is
+#Define a function to investigate delta_energy at each position
 #Return the flip_matrix
-def energy_evaluator(energy_change_grid, temp):
-	n = len(energy_change_grid)
-	flip_matrix = np.ones_like(energy_change_grid)
-	for i in range(0,n):
-		for j in range(0,n):
-			p = np.random.uniform()
-			if (energy_change_grid[i,j]<0):
-				flip_matrix[i,j] = -1
-			elif (np.exp(-energy_change_grid[i,j]/(temp*(sc.k)))>p):
-				flip_matrix[i,j] = -1
-	return flip_matrix
+def energy_evaluator(delta_energy, temp):
+	#Number of rows in delta_energy
+    n = len(delta_energy)
+    flip_matrix = np.ones_like(delta_energy)
+    for i in range(0,n):
+        for j in range(0,n):
+            #Generate a new random number each time
+            p = np.random.uniform()
+            if (delta_energy[i,j] < 0):
+                flip_matrix[i,j] = -1
+            elif (np.exp((-delta_energy[i,j])/(temp)) > p):
+                flip_matrix[i,j] = -1
+    return flip_matrix
 
-#print(energy_evaluator(delta, 1))
 #One time loop is calculate energy matrix, calculate flip matrix and multiply
 #Define a function that takes the required number of time loops and the initial matrix and exchange energy magnetic moment, field and temperature
 #And runs it for the specified number of loops, preferably updating plot as it goes
 #Define a function to calculate magnetisation
+    
 
 def magnetisation(grid, magnetic_moment):
-	M = magnetic_moment * np.sum(grid)
+	M = np.abs(magnetic_moment * np.sum(grid))
 	return M
-	
+
 def looper(n, initial_spins, exchange_energy, magnetic_moment, field, temp):
 	deltaE, E = calculate_delta_energy(initial_spins, exchange_energy, magnetic_moment, field)
 	flip_matrix = energy_evaluator(deltaE,temp)
@@ -79,7 +80,8 @@ def looper(n, initial_spins, exchange_energy, magnetic_moment, field, temp):
 	
 	return spins, deltaE, E, magnetisation_vector
 		
-#new_spins, new_delta, new_energy = looper(100000,thirty, 1,1,0,2)
+#new_spins, new_delta, new_energy, new_mag = looper(100,ten, 1,1,0,2)
+#print(new_mag)
 #ax2 = plt.imshow(new_spins)
 #plt.savefig('afterlong.png')
 
@@ -112,7 +114,10 @@ def largest_connected_component(nrows, ncols, grid):
 
     return component_size
 
-
+new_spins, new_delta, new_energy, new_mag = looper(1000,ten, 1,1,0,1)
+ax1 = plt.imshow(new_spins)
+plt.show()
+print(largest_connected_component(10,10,new_spins))
 #Investigating Energy
 #Ehalf = np.mean(looper(1000, thirty,1,1,0,0.5)[2])
 #E1 = np.mean(looper(1000, thirty,1,1,0,1)[2])
@@ -139,6 +144,22 @@ def heat_capacity(temp_low, temp_high, grid, sampling_interval):
 		heat_cap[i] = (np.square(std_dev_energy)/T[i]**2)
 	return heat_cap, T, energy
 
+#Define a function to calculate the autocorrelation
+
+def autocorrelation(magnetisation_vector, time_delay):
+    m_prime = magnetisation_vector - np.mean(magnetisation_vector)
+    m_prime_delay = m_prime[time_delay:]
+    l = len(m_prime)-time_delay
+    A = np.mean(np.multiply(m_prime_delay,m_prime[:l]))
+    return A
+mmm = np.array([1,4,4])
+taus = np.linspace(0, len(mmm),len(mmm)+1, dtype=int)
+
+#print(autocorrelation(mmm,taus[0]))
+#print(autocorrelation(mmm,taus[1]))
+#a = autocorrelation(magnetisation_vector, time_delay)/autocorrelation(magnetisation_vector,0)
+    
+
 #heat, Temp, energy = heat_capacity(0.5,4,thirty,100000)
 #plt.figure(0)
 #plt.plot(Temp, heat)
@@ -147,19 +168,36 @@ def heat_capacity(temp_low, temp_high, grid, sampling_interval):
 #plt.plot(Temp, energy)
 #plt.savefig('energylong.png')
 
+#primer1 = looper(5000, ten, 1,1,0,0.1)[0]
+#mag1 = looper(5000,ten,1,1,0,0.1)[3]
+#print(np.mean(mag1))
 
+#primer2 = looper(5000, ten, 1,1,0,1)[0]
+#mag2 = looper(5000,ten,1,1,0,1)[3]
+#print(np.mean(mag2))
 
-maghot = looper(10000,ten,1,1,0,10000)[3]
-print(np.mean(maghot))
+#primer3 = looper(5000, ten, 1,1,0,1.5)[0]
+#mag3 = looper(5000,ten,1,1,0,1.5)[3]
+#print(np.mean(mag3))
 
-magcold = looper(10000,ten,1,1,0,20)[3]
-print(np.mean(magcold))
+#primer4 = looper(5000, ten, 1,1,0,2)[0]
+#mag4 = looper(5000,ten,1,1,0,2)[3]
+#print(np.mean(mag4))
+
+#primer5 = looper(5000, ten, 1,1,0,3)[0]
+#mag5 = looper(5000,ten,1,1,0,3)[3]
+#print(np.mean(mag5))
+
+#primer6 = looper(5000, ten, 1,1,0,8)[0]
+#mag6 = looper(5000,ten,1,1,0,8)[3]
+#print(np.mean(mag6))
 
 #primercold = looper(5000,ten,1,1,0,0.5)[0]
 #ax3 = plt.imshow(primercold)
 #plt.savefig('primerten05.png')
 #print(magnetisation(primercold,1))
 #print(largest_connected_component(10,10,primercold))
+#print(largest_connected_component(10,10,primerhot))
 
 #after = looper(10000,primer,1,1,0,5)[0]
 #ax3 = plt.imshow(after)
